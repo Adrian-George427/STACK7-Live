@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>STACK 7 Live</title>
     <link rel="stylesheet" href="index.css">
-    <!-- index.js als Modul einbinden -->
     <script type="module" src="index.js"></script>
 </head>
 <body>
@@ -42,22 +41,50 @@
                 <span id="host-badge" class="badge hidden">Du bist der Host</span>
             </div>
 
-            <!-- Eigene Punkte-Steuerung für jeden Spieler -->
+            <!-- Globaler Spielstatus (Gemeinsamer Topf & Turm) -->
+            <div class="card global-status-card">
+                <div class="status-grid">
+                    <div class="status-item">
+                        <small>Gemeinsamer Pot</small>
+                        <span id="global-pot">0</span> <small>Chips</small>
+                    </div>
+                    <div class="status-item">
+                        <small>Aktuelle Turmhöhe</small>
+                        <span id="tower-height">0</span> <small>/ 21</small>
+                    </div>
+                </div>
+                <!-- Checkpoint Anzeige -->
+                <div id="checkpoint-alert" class="checkpoint-banner hidden">
+                    ⚠️ CHECKPOINT ERREICHT! CASH OUT oder STAY?
+                </div>
+                <!-- Host-Steuerung für Turm-Resets -->
+                <div id="host-controls" class="hidden">
+                    <button id="btn-reset-tower" class="btn-danger-small">💥 Turm eingestürzt / Reset</button>
+                </div>
+            </div>
+
+            <!-- Eigene Punkte- & Spielsteuerung -->
             <div class="card my-score-card">
                 <h2>Deine Chips: <span id="my-chips">20</span></h2>
+                <div class="game-action-label">Chip-Aktionen (Ändert dein Kapital):</div>
                 <div class="score-buttons">
                     <button id="btn-score-1">+1</button>
                     <button id="btn-score-7">+7</button>
                     <button id="btn-score-2">-2</button>
+                </div>
+                
+                <div class="game-action-label" style="margin-top: 15px;">Spiel-Züge (Chips in den Pot legen & Turm erhöhen):</div>
+                <div class="score-buttons">
+                    <button id="btn-place-1" class="btn-game-action">1 in Pot</button>
+                    <button id="btn-place-2" class="btn-game-action">2 in Pot</button>
+                    <button id="btn-place-3" class="btn-game-action">3 in Pot</button>
                 </div>
             </div>
 
             <!-- Live-Rangliste aller Spieler im Raum -->
             <div class="card">
                 <h2>Mitspieler im Raum</h2>
-                <ul id="players-list">
-                    <!-- Wird dynamisch durch index.js befüllt -->
-                </ul>
+                <ul id="players-list"></ul>
             </div>
         </section>
     </div>

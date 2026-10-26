@@ -369,3 +369,71 @@ button:disabled { opacity: .35 }
     main { grid-template-columns: 1fr 1fr }
     .wide { grid-column: 1 / -1 }
 }
+/* Bestehendes CSS bleibt aktiv, füge unten diese Klassen hinzu */
+
+.global-status-card {
+    border: 2px solid var(--secondary);
+    background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%);
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    text-align: center;
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+}
+
+.status-item span {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffeb3b;
+    margin: 5px 0;
+}
+
+.game-action-label {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.btn-game-action {
+    background-color: #2e7d32 !important;
+    color: white;
+}
+.btn-game-action:hover {
+    background-color: #1b5e20 !important;
+}
+
+.btn-danger-small {
+    background-color: #c62828;
+    color: white;
+    margin-top: 15px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+.checkpoint-banner {
+    background-color: #e65100;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 15px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
