@@ -1,0 +1,371 @@
+:root {
+    color-scheme: dark;
+    --bg: #111;
+    --panel: #1e1e1e;
+    --text: #f5f5f5;
+    --line: #393939;
+    --gold: #f4c95d;
+    --muted: #aaa;
+    --red: #ff7777;
+    --green: #9ce6a0;
+    --accent: #00dfff;
+    --accent-2: #8b5cf6;
+    --hero-glow: rgba(0, 223, 255, 0.26)
+}
+
+* { box-sizing: border-box }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px system-ui, -apple-system, sans-serif;
+    min-height: 100vh
+}
+
+header {
+    padding: 20px 16px 14px;
+    background: rgba(13, 19, 31, 0.94);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    backdrop-filter: blur(10px)
+}
+
+h1 {
+    margin: 0;
+    font-size: 26px;
+    letter-spacing: 2px
+}
+
+h1 span { color: var(--accent) }
+
+header p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13px
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px
+}
+
+.logo {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 223, 255, 0.6);
+    box-shadow: 0 0 14px var(--hero-glow)
+}
+
+main {
+    max-width: 980px;
+    margin: auto;
+    padding: 14px;
+    display: grid;
+    gap: 14px
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid #293653;
+    border-radius: 14px;
+    padding: 14px
+}
+
+h2 {
+    font-size: 17px;
+    margin: 0 0 12px
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px
+}
+
+.stat {
+    background: #080e1d;
+    border: 1px solid #1e2d4c;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center
+}
+
+.stat b {
+    display: block;
+    font-size: 24px;
+    color: var(--accent)
+}
+
+.stat small { color: var(--muted) }
+
+input, select, button {
+    font: inherit;
+    border-radius: 9px;
+    border: 1px solid #4a4a4a;
+    padding: 11px;
+    background: #121212;
+    color: #fff;
+    min-width: 0
+}
+
+input { width: 100% }
+
+button {
+    cursor: pointer;
+    font-weight: 650;
+    transition: transform .12s ease, opacity .12s ease, border-color .12s ease
+}
+
+button:hover { border-color: var(--accent) }
+
+button:active { transform: scale(.98) }
+
+button.primary {
+    background: var(--accent);
+    color: #06111c;
+    border-color: var(--accent)
+}
+
+button.danger {
+    border-color: #844747;
+    color: #ffaaaa
+}
+
+button:disabled { opacity: .35 }
+
+.formrow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px
+}
+
+.players {
+    display: grid;
+    gap: 8px
+}
+
+.player {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02)
+}
+
+.player .name {
+    font-weight: 700
+}
+
+.player .chips {
+    color: var(--gold);
+    font-weight: 800;
+    font-size: 20px
+}
+
+.player small {
+    display: block;
+    color: var(--muted);
+    font-size: 12px
+}
+
+.player.ruined {
+    border-color: #864747;
+    opacity: .7
+}
+
+.tag {
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: #492828;
+    color: #ffb1b1;
+    margin-left: 5px
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px
+}
+
+.actions button { padding: 12px 6px }
+
+.note {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5
+}
+
+.checkpoints {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap
+}
+
+.cp {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--muted)
+}
+
+.cp.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 800
+}
+
+.log {
+    max-height: 240px;
+    overflow: auto;
+    font-size: 13px
+}
+
+.log div {
+    padding: 7px 0;
+    border-bottom: 1px solid #333
+}
+
+.log time {
+    color: var(--muted);
+    margin-right: 7px
+}
+
+.footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap
+}
+
+.footer button { flex: 1 }
+
+.feature-grid,
+.players-grid {
+    display: grid;
+    gap: 12px
+}
+
+.feature-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) }
+
+.players-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 12px
+}
+
+.mini-card,
+.player-card {
+    background: rgba(7, 11, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px
+}
+
+.mini-card h3,
+.player-card h3 {
+    margin: 0 0 8px;
+    font-size: 15px
+}
+
+.mini-card p,
+.player-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5
+}
+
+.player-card {
+    display: grid;
+    gap: 10px;
+    min-height: 220px
+}
+
+.player-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px
+}
+
+.player-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700
+}
+
+.player-hand {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px
+}
+
+.card-chip {
+    padding: 6px 8px;
+    border-radius: 7px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    color: #f2f5ff
+}
+
+.player-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap
+}
+
+.player-actions button {
+    flex: 1;
+    min-width: 90px
+}
+
+.settings-panel summary {
+    cursor: pointer;
+    font-size: 17px;
+    font-weight: 700
+}
+
+.color-settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 14px
+}
+
+.color-settings label {
+    display: grid;
+    gap: 7px;
+    color: var(--muted);
+    font-size: 13px
+}
+
+.color-settings input[type="color"] {
+    width: 100%;
+    height: 42px;
+    padding: 4px;
+    cursor: pointer
+}
+
+@media(max-width:380px) {
+    .logo { width: 48px; height: 48px }
+    h1 { font-size: 22px }
+    .actions { grid-template-columns: 1fr 1fr }
+}
+
+@media(min-width:620px) {
+    main { grid-template-columns: 1fr 1fr }
+    .wide { grid-column: 1 / -1 }
+}
