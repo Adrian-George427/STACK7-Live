@@ -1,249 +1,145 @@
-(() => {
-    const $ = id => document.getElementById(id);
-    const defaultSettings = {
-        accent: '#00dfff',
-        background: '#111111',
-        panel: '#1e1e1e',
-        text: '#f5f5f5'
-    };
-    const deckPool = ['Bluff', 'Counter', 'Rage', 'Focus', 'Lucky Shot', 'Shield', 'Mikro-Deal', 'Power Move', 'Tempo', 'Betrug'];
-    const roles = ['Risk-Taker', 'Taktiker', 'Bluffer', 'Dealer', 'Macher', 'Coup-Artist'];
+// Importiere die benötigten Firebase v13 Funktionen direkt über das Web-CDN
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+import { getDatabase, ref, set, once, onValue, runTransaction, onDisconnect, remove } from "https://gstatic.com";
 
-    let players = [], pot = 0, height = 0, logs = [];
-    let settings = loadSettings();
+// Deine verifizierte Firebase-Konfiguration
+const firebaseConfig = {
+    apiKey: "AIzaSyBjz0AHR4g6bhq_TITyjvDUjfG8xTeYXWY",
+    authDomain: "test-325b5.firebaseapp.com",
+    projectId: "test-325b5",
+    storageBucket: "test-325b5.firebasestorage.app",
+    messagingSenderId: "119186396423",
+    appId: "1:119186396423:web:3089a1c02c78c1a39121a2",
+    measurementId: "G-EE9SJMPYNW"
+};
 
-    function loadSettings() {
-        try {
-            const raw = localStorage.getItem('stack7-settings');
-            const stored = raw ? JSON.parse(raw) : {};
-            return Object.fromEntries(Object.keys(defaultSettings).map(key => [key, stored[key] || defaultSettings[key]]));
-        } catch {
-            return { ...defaultSettings };
-        }
-    }
+// Initialisiere Firebase und die Realtime Database
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
-    function saveSettings() {
-        localStorage.setItem('stack7-settings', JSON.stringify(settings));
-    }
+// --- GLOBALE VARIABLEN ---
+let currentRoomCode = null;
+let myPlayerId = null;
+let currentUsername = "";
+let isHost = false;
 
-    function applyTheme() {
-        const root = document.documentElement;
-        for (const key of ['accent', 'background', 'panel', 'text']) {
-            const value = settings[key] || defaultSettings[key];
-            settings[key] = value;
-            root.style.setProperty(`--${key === 'background' ? 'bg' : key}`, value);
-            const input = $(`${key}Color`);
-            if (input) input.value = value;
-        }
-    }
+// --- DOM ELEMENTE ---
+const setupSection = document.getElementById('setup-section');
+const gameSection = document.getElementById('game-section');
+const usernameInput = document.getElementById('username');
+const lobbyCodeInput = document.getElementById('lobby-code-input');
+const displayRoomCode = document.getElementById('display-room-code');
+const hostBadge = document.getElementById('host-badge');
+const playersList = document.getElementById('players-list');
+const myChipsDisplay = document.getElementById('my-chips');
 
-    const stamp = () => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+// --- EVENT LISTENERS ---
+document.getElementById('btn-create-lobby').addEventListener('click', createLobby);
+document.getElementById('btn-join-lobby').addEventListener('click', joinLobby);
+document.getElementById('btn-score-1').addEventListener('click', () => changeMyChips(1));
+document.getElementById('btn-score-7').addEventListener('click', () => changeMyChips(7));
+document.getElementById('btn-score-2').addEventListener('click', () => changeMyChips(-2));
 
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
+// --- FUNKTION: SPIEL HOSTEN (RAUM ERSTELLEN) ---
+function createLobby() {
+    currentUsername = usernameInput.value.trim();
+    if (!currentUsername) return alert("Bitte gib einen Namen ein!");
 
-    function log(msg) { logs.unshift({ time: stamp(), msg }); renderLog(); }
+    // Generiere einen zufälligen 4-stelligen Raumcode
+    currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    myPlayerId = "player_" + Date.now();
+    isHost = true;
 
-    function renderLog() {
-        $('log').innerHTML = logs.map(x => `<div><time>${x.time}</time>${escapeHtml(x.msg)}</div>`).join('') || '<div>Noch keine Aktionen.</div>';
-    }
-
-    function actor() { return players.find(p => p.id === $('actor').value); }
-
-    function randomDeck() {
-        const used = [];
-        for (let i = 0; i < 3; i++) {
-            const entry = deckPool[Math.floor(Math.random() * deckPool.length)];
-            if (!used.includes(entry)) used.push(entry);
-        }
-        return used;
-    }
-
-    function renderPlayerBoard() {
-        $('playerBoard').innerHTML = players.map((p) => {
-            const deck = p.deck || randomDeck();
-            return `
-                <div class="player-card">
-                    <div class="player-head">
-                        <div>
-                            <h3>${escapeHtml(p.name)}</h3>
-                            <small>${p.ruined ? 'Ausgeschieden' : 'Im Spiel'}</small>
-                        </div>
-                        <span class="player-badge">${escapeHtml(p.role)}</span>
-                    </div>
-                    <p><strong>${p.chips}</strong> Chips · ${p.ruined ? 'Runde verloren' : 'Aktiv'}</p>
-                    <p>${escapeHtml(p.note)}</p>
-                    <div class="player-hand">
-                        ${deck.map(card => `<span class="card-chip">${escapeHtml(card)}</span>`).join('')}
-                    </div>
-                    <div class="player-actions">
-                        <button data-chip-action="plus1" data-player-id="${p.id}">+1</button>
-                        <button data-chip-action="minus1" data-player-id="${p.id}">−1</button>
-                    </div>
-                </div>
-            `;
-        }).join('') || '<div class="mini-card"><h3>Keine Spieler</h3><p>Füge Spieler hinzu, damit jede Karte ihren eigenen Bereich bekommt.</p></div>';
-
-        document.querySelectorAll('[data-chip-action]').forEach(button => {
-            button.onclick = () => {
-                const id = button.dataset.playerId;
-                const target = players.find(p => p.id === id);
-                if (!target) return;
-                const delta = button.dataset.chipAction === 'plus1' ? 1 : -1;
-                changeChips(target, delta);
-                render();
-            };
-        });
-    }
-
-    function render() {
-        $('pot').textContent = pot;
-        $('height').textContent = height;
-        $('active').textContent = players.filter(p => !p.ruined).length;
-
-        $('players').innerHTML = players.map(p => `
-            <div class="player ${p.ruined ? 'ruined' : ''}">
-                <div>
-                    <span class="name">${escapeHtml(p.name)}</span>${p.ruined ? '<span class="tag">RUINIERT</span>' : ''}
-                    <small>${p.ruined ? 'Ausgeschieden' : 'Im Spiel'}</small>
-                </div>
-                <div class="chips">${p.chips} ◉</div>
-            </div>
-        `).join('') || '<p class="note">Noch keine Spieler hinzugefügt.</p>';
-
-        const oldActor = $('actor').value;
-        const oldTarget = $('target').value;
-        $('actor').innerHTML = players.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.chips})${p.ruined ? ' – RUINIERT' : ''}</option>`).join('');
-        $('target').innerHTML = players.filter(p => p.id !== oldActor).map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.chips})</option>`).join('');
-
-        if (!players.length) {
-            $('actor').innerHTML = '';
-            $('target').innerHTML = '';
-        } else {
-            if (players.some(p => p.id === oldActor)) $('actor').value = oldActor;
-            if (players.some(p => p.id === oldTarget)) $('target').value = oldTarget;
-            if (!$('actor').value) $('actor').value = players[0].id;
-            if (!$('target').value && players.length > 1) $('target').value = players[1].id;
-        }
-
-        for (const n of [7, 14, 21]) $('cp' + n).classList.toggle('active', height >= n);
-        $('checkpointMessage').textContent = height >= 21 ? 'Checkpoint 21 erreicht: CASH OUT oder STAY entscheiden!' : height >= 14 ? 'Checkpoint 14 erreicht: CASH OUT oder STAY entscheiden!' : height >= 7 ? 'Checkpoint 7 erreicht: CASH OUT oder STAY entscheiden!' : 'Noch kein Checkpoint erreicht.';
-
-        const disabled = !actor() || actor().ruined;
-        document.querySelectorAll('[data-action]').forEach(b => b.disabled = disabled);
-        renderPlayerBoard();
-    }
-
-    function changeChips(p, delta) {
-        if (!p) return false;
-        if (delta < 0 && p.chips < -delta) {
-            log(`${p.name} hat nicht genug Chips.`);
-            return false;
-        }
-        p.chips += delta;
-        if (p.chips <= 0) {
-            p.chips = 0;
-            p.ruined = true;
-            log(`${p.name} ist RUINIERT.`);
-        }
-        return true;
-    }
-
-    for (const key of ['accent', 'background', 'panel', 'text']) {
-        $(`${key}Color`).addEventListener('input', event => {
-            settings[key] = event.target.value;
-            applyTheme();
-            saveSettings();
-        });
-    }
-
-    $('addBtn').onclick = () => {
-        const name = $('playerName').value.trim();
-        if (!name) return alert('Bitte einen Namen eingeben.');
-        if (players.length >= 12) return alert('Maximal 12 Spieler.');
-
-        players.push({
-            id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
-            name,
-            chips: 20,
-            ruined: false,
-            role: roles[Math.floor(Math.random() * roles.length)],
-            note: `${name} spielt mit Tempo und Risiko.`,
-            deck: randomDeck()
-        });
-        $('playerName').value = '';
-        log(`${name} tritt mit 20 Chips bei.`); 
-        render();
-    };
-
-    $('playerName').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
-
-    document.querySelectorAll('[data-action]').forEach(b => b.onclick = () => {
-        const p = actor();
-        if (!p || p.ruined) return;
-        switch (b.dataset.action) {
-            case 'plus1': if (changeChips(p, 1)) log(`${p.name}: +1 Chip.`); break;
-            case 'plus7': if (changeChips(p, 7)) log(`${p.name}: +7 Chips.`); break;
-            case 'minus2': if (changeChips(p, -2)) log(`${p.name}: −2 Chips.`); break;
-            case 'steal': {
-                const t = players.find(x => x.id === $('target').value);
-                if (!t || t.ruined || t.chips < 1) {
-                    log('STEAL nicht möglich: Ziel hat keine verfügbaren Chips.');
-                    break;
-                }
-                changeChips(t, -1);
-                changeChips(p, 1);
-                log(`${p.name} stiehlt 1 Chip von ${t.name} (Platzhalterregel).`);
-                break;
-            }
-            case 'bust':
-                if (changeChips(p, -2)) {
-                    pot += 2;
-                    log(`BUST: ${p.name} zahlt 2 Chips in den Pot (Platzhalterregel).`);
-                }
-                break;
-            case 'double': if (changeChips(p, 2)) log(`${p.name} spielt DOUBLE: +2 Chips (Platzhalterregel).`); break;
-            case 'insure': log(`${p.name} spielt INSURE. Versicherungsstatus noch nicht umgesetzt.`); break;
-            case 'block': log(`${p.name} spielt BLOCK. Blockstatus noch nicht umgesetzt.`); break;
-            case 'contribute': {
-                const n = Math.max(1, Math.min(99, Number($('potAmount').value) || 1));
-                if (changeChips(p, -n)) {
-                    pot += n;
-                    log(`${p.name} legt ${n} Chip(s) in den Pot.`);
-                }
-                break;
+    const roomRef = ref(database, 'rooms/' + currentRoomCode);
+    
+    set(roomRef, {
+        host: myPlayerId,
+        createdAt: Date.now(),
+        players: {
+            [myPlayerId]: {
+                name: currentUsername,
+                chips: 20
             }
         }
-        render();
+    }).then(() => {
+        setupGameUI();
+    }).catch(err => alert("Fehler beim Erstellen des Raums: " + err.message));
+}
+
+// --- FUNKTION: RAUM BEITRETEN ---
+function joinLobby() {
+    currentUsername = usernameInput.value.trim();
+    const code = lobbyCodeInput.value.trim();
+    
+    if (!currentUsername) return alert("Bitte gib einen Namen ein!");
+    if (!code) return alert("Bitte gib einen Raumcode ein!");
+
+    const roomRef = ref(database, 'rooms/' + code);
+
+    // Einmalige Abfrage, ob der Raum existiert
+    onValue(roomRef, (snapshot) => {
+        if (!snapshot.exists()) {
+            alert("Raum existiert nicht!");
+            return;
+        }
+
+        currentRoomCode = code;
+        myPlayerId = "player_" + Date.now();
+        isHost = false;
+
+        const playerRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId);
+        set(playerRef, {
+            name: currentUsername,
+            chips: 20
+        }).then(() => {
+            setupGameUI();
+        });
+    }, { onlyOnce: true });
+}
+
+// --- FUNKTION: SPIELOBERFLÄCHE ZEIGEN & LIVE-SYNC ---
+function setupGameUI() {
+    setupSection.classList.add('hidden');
+    gameSection.classList.remove('hidden');
+    displayRoomCode.innerText = currentRoomCode;
+    
+    if (isHost) {
+        hostBadge.classList.remove('hidden');
+    }
+
+    const playersRef = ref(database, 'rooms/' + currentRoomCode + '/players');
+
+    // Live-Abhören aller Änderungen in diesem Raum
+    onValue(playersRef, (snapshot) => {
+        const players = snapshot.val();
+        if (!players) return;
+
+        playersList.innerHTML = "";
+        for (let id in players) {
+            const player = players[id];
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${player.name}</span> <strong>${player.chips} Chips</strong>`;
+            playersList.appendChild(li);
+
+            if (id === myPlayerId) {
+                myChipsDisplay.innerText = player.chips;
+            }
+        }
     });
 
-    $('addPot').onclick = () => {
-        const p = actor();
-        const n = Math.max(1, Math.min(99, Number($('potAmount').value) || 1));
-        if (!p || p.ruined) return;
-        if (changeChips(p, -n)) {
-            pot += n;
-            log(`${p.name} legt ${n} Chip(s) in den Pot.`);
-        }
-        render();
-    };
+    // Automatisches Löschen aus der Firebase-Liste, wenn die Verbindung abbricht (z.B. Tab geschlossen)
+    const myPlayerRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId);
+    onDisconnect(myPlayerRef).remove();
+}
 
-    $('towerPlus').onclick = () => { height++; log(`Turmhöhe steigt auf ${height}.`); render(); };
-    $('towerMinus').onclick = () => { if (height > 0) { height--; log(`Turmhöhe sinkt auf ${height}.`); } render(); };
-    $('resetTower').onclick = () => { if (confirm('Turmhöhe wirklich auf 0 setzen?')) { height = 0; log('Turmhöhe zurückgesetzt.'); render(); } };
-    $('resetBtn').onclick = () => { if (confirm('Alle Spieler, Chips, Pot, Turm und Protokoll löschen?')) { players = []; pot = 0; height = 0; logs = []; render(); renderLog(); } };
-    $('exportBtn').onclick = () => {
-        const body = ['STACK 7 LIVE – Aktionsprotokoll', 'Export: ' + new Date().toLocaleString('de-DE'), '', 'Spieler:', ...players.map(p => `${p.name}: ${p.chips} Chips${p.ruined ? ' (RUINIERT)' : ''}`), `Pot: ${pot}`, `Turmhöhe: ${height}`, '', 'Aktionen:', ...logs.map(x => `[${x.time}] ${x.msg}`)].join('\n');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }));
-        a.download = 'stack-7-protokoll.txt';
-        a.click();
-        URL.revokeObjectURL(a.href);
-    };
+// --- FUNKTION: EIGENE CHIPS BEARBEITEN ---
+function changeMyChips(amount) {
+    if (!currentRoomCode || !myPlayerId) return;
 
-    applyTheme();
-    saveSettings();
-    render();
-    renderLog();
-})();
+    const playerChipsRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId + '/chips');
+    
+    // Nutze eine sichere Transaktion gegen asynchrone Berechnungsfehler
+    runTransaction(playerChipsRef, (currentChips) => {
+        return (currentChips || 0) + amount;
+    });
+}
