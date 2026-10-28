@@ -28,7 +28,7 @@
                 
                 <div class="form-group">
                     <label for="lobby-code-input">Raum-Code:</label>
-                    <input type="text" id="lobby-code-input" placeholder="4-stelliger Code">
+                    <input type="number" maxlength="6" pattern="[0-9]{6}" id="lobby-code-input" placeholder="6-stelliger Code">
                 </div>
                 <button id="btn-join-lobby" class="btn-secondary">Raum beitreten</button>
             </div>

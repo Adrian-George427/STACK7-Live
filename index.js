@@ -1,195 +1,220 @@
-import { initializeApp } from "https://gstatic.com";
-import { getDatabase, ref, set, onValue, runTransaction, onDisconnect } from "https://gstatic.com";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getDatabase, ref, get, set, onValue, runTransaction, onDisconnect, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBjz0AHR4g6bhq_TITyjvDUjfG8xTeYXWY",
-    authDomain: "://firebaseapp.com",
-    projectId: "test-325b5",
-    storageBucket: "test-325b5.firebasestorage.app",
-    messagingSenderId: "119186396423",
-    appId: "1:119186396423:web:3089a1c02c78c1a39121a2",
-    measurementId: "G-EE9SJMPYNW"
+  apiKey: "AIzaSyBjz0AHR4g6bhq_TITyjvDUjfG8xTeYXWY",
+  authDomain: "test-325b5.firebaseapp.com",
+  databaseURL: "https://test-325b5-default-rtdb.firebaseio.com",
+  projectId: "test-325b5",
+  storageBucket: "test-325b5.firebasestorage.app",
+  messagingSenderId: "119186396423",
+  appId: "1:119186396423:web:3089a1c02c78c1a39121a2"
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const database = getDatabase(app);
 
 let currentRoomCode = null;
 let myPlayerId = null;
 let currentUsername = "";
 let isHost = false;
+let stopPlayersListener = null;
+let stopRoomListener = null;
 
-const setupSection = document.getElementById('setup-section');
-const gameSection = document.getElementById('game-section');
-const usernameInput = document.getElementById('username');
-const lobbyCodeInput = document.getElementById('lobby-code-input');
-const displayRoomCode = document.getElementById('display-room-code');
-const hostBadge = document.getElementById('host-badge');
-const playersList = document.getElementById('players-list');
-const myChipsDisplay = document.getElementById('my-chips');
+const $ = (id) => document.getElementById(id);
+const setupSection = $("setup-section");
+const gameSection = $("game-section");
+const usernameInput = $("username");
+const lobbyCodeInput = $("lobby-code-input");
+const displayRoomCode = $("display-room-code");
+const hostBadge = $("host-badge");
+const playersList = $("players-list");
+const myChipsDisplay = $("my-chips");
+const globalPotDisplay = $("global-pot");
+const towerHeightDisplay = $("tower-height");
+const checkpointAlert = $("checkpoint-alert");
+const hostControls = $("host-controls");
 
-const globalPotDisplay = document.getElementById('global-pot');
-const towerHeightDisplay = document.getElementById('tower-height');
-const checkpointAlert = document.getElementById('checkpoint-alert');
-const hostControls = document.getElementById('host-controls');
+$("btn-create-lobby").addEventListener("click", () => guarded(createLobby));
+$("btn-join-lobby").addEventListener("click", () => guarded(joinLobby));
+$("btn-score-1").addEventListener("click", () => guarded(() => changeMyChips(1)));
+$("btn-score-7").addEventListener("click", () => guarded(() => changeMyChips(7)));
+$("btn-score-2").addEventListener("click", () => guarded(() => changeMyChips(-2)));
+$("btn-place-1").addEventListener("click", () => guarded(() => playTurn(1)));
+$("btn-place-2").addEventListener("click", () => guarded(() => playTurn(2)));
+$("btn-place-3").addEventListener("click", () => guarded(() => playTurn(3)));
+$("btn-reset-tower").addEventListener("click", () => guarded(resetTowerAndPot));
 
-document.getElementById('btn-create-lobby').addEventListener('click', createLobby);
-document.getElementById('btn-join-lobby').addEventListener('click', joinLobby);
-document.getElementById('btn-score-1').addEventListener('click', () => changeMyChips(1));
-document.getElementById('btn-score-7').addEventListener('click', () => changeMyChips(7));
-document.getElementById('btn-score-2').addEventListener('click', () => changeMyChips(-2));
+function guarded(action) {
+  Promise.resolve().then(action).catch((error) => {
+    console.error(error);
+    alert("Fehler: " + (error?.message || error));
+  });
+}
 
-document.getElementById('btn-place-1').addEventListener('click', () => playTurn(1));
-document.getElementById('btn-place-2').addEventListener('click', () => playTurn(2));
-document.getElementById('btn-place-3').addEventListener('click', () => playTurn(3));
-document.getElementById('btn-reset-tower').addEventListener('click', resetTowerAndPot);
+async function signedInUser() {
+  if (auth.currentUser) return auth.currentUser;
+  return (await signInAnonymously(auth)).user;
+}
 
-function createLobby() {
-    currentUsername = usernameInput.value.trim();
-    if (!currentUsername) return alert("Bitte gib einen Namen ein!");
+function getName() {
+  const name = usernameInput.value.trim().replace(/\s+/g, " ").slice(0, 20);
+  if (!name) throw new Error("Bitte gib einen Namen ein.");
+  currentUsername = name;
+}
 
-    currentRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
-    myPlayerId = "player_" + Date.now();
-    isHost = true;
+function makeRoomCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
-    const roomRef = ref(database, 'rooms/' + currentRoomCode);
-    
-    set(roomRef, {
+async function createLobby() {
+  getName();
+  myPlayerId = (await signedInUser()).uid;
+  let created = false;
+
+  for (let i = 0; i < 10 && !created; i++) {
+    currentRoomCode = makeRoomCode();
+    const roomRef = ref(database, "rooms/" + currentRoomCode);
+    const result = await runTransaction(roomRef, (room) => {
+      if (room !== null) return;
+      return {
         host: myPlayerId,
         createdAt: Date.now(),
         pot: 0,
         towerHeight: 0,
         players: {
-            [myPlayerId]: { name: currentUsername, chips: 20 }
+          [myPlayerId]: { name: currentUsername, chips: 20, joinedAt: Date.now() }
         }
-    }).then(() => {
-        setupGameUI();
-    }).catch(err => alert("Fehler beim Erstellen des Raums: " + err.message));
+      };
+    }, { applyLocally: false });
+    created = result.committed;
+  }
+
+  if (!created) throw new Error("Kein freier Raumcode gefunden. Bitte erneut versuchen.");
+  isHost = true;
+  await enterRoom();
 }
 
-function joinLobby() {
-    currentUsername = usernameInput.value.trim();
-    const code = lobbyCodeInput.value.trim();
-    
-    if (!currentUsername) return alert("Bitte gib einen Namen ein!");
-    if (!code) return alert("Bitte gib einen Raumcode ein!");
+async function joinLobby() {
+  getName();
+  myPlayerId = (await signedInUser()).uid;
+  const code = lobbyCodeInput.value.trim();
+  if (!/^\d{6}$/.test(code)) throw new Error("Bitte gib den sechsstelligen Raumcode ein.");
 
-    const roomRef = ref(database, 'rooms/' + code);
+  const roomRef = ref(database, "rooms/" + code);
+  const playerRef = ref(database, "rooms/" + code + "/players/" + myPlayerId);
 
-    onValue(roomRef, (snapshot) => {
-        if (!snapshot.exists()) {
-            alert("Raum existiert nicht!");
-            return;
-        }
+  // Erst den eigenen Eintrag versuchen: Die Regeln erlauben das nur,
+  // wenn der Raum existiert. Danach darf das Mitglied den Raum lesen.
+  await set(playerRef, { name: currentUsername, chips: 20, joinedAt: Date.now() });
+  const after = await get(roomRef);
+  if (!after.exists()) {
+    throw new Error("Raum nicht gefunden. Prüfe den Code.");
+  }
 
-        currentRoomCode = code;
-        myPlayerId = "player_" + Date.now();
-        isHost = false;
-
-        const playerRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId);
-        set(playerRef, { name: currentUsername, chips: 20 }).then(() => {
-            setupGameUI();
-        });
-    }, { onlyOnce: true });
+  currentRoomCode = code;
+  isHost = after.val().host === myPlayerId;
+  await enterRoom();
 }
 
-function setupGameUI() {
-    setupSection.classList.add('hidden');
-    gameSection.classList.remove('hidden');
-    displayRoomCode.innerText = currentRoomCode;
-    
-    if (isHost) {
-        hostBadge.classList.remove('hidden');
-        hostControls.classList.remove('hidden');
+async function enterRoom() {
+  setupSection.classList.add("hidden");
+  gameSection.classList.remove("hidden");
+  displayRoomCode.textContent = currentRoomCode;
+  hostBadge.classList.toggle("hidden", !isHost);
+  hostControls.classList.toggle("hidden", !isHost);
+
+  if (stopPlayersListener) stopPlayersListener();
+  if (stopRoomListener) stopRoomListener();
+
+  const roomRef = ref(database, "rooms/" + currentRoomCode);
+  const playersRef = ref(database, "rooms/" + currentRoomCode + "/players");
+  const myPlayerRef = ref(database, "rooms/" + currentRoomCode + "/players/" + myPlayerId);
+  await onDisconnect(myPlayerRef).remove();
+
+  stopPlayersListener = onValue(playersRef, (snapshot) => {
+    const players = snapshot.val() || {};
+    playersList.replaceChildren();
+    Object.entries(players).forEach(([id, player]) => {
+      const li = document.createElement("li");
+      const name = document.createElement("span");
+      const chips = document.createElement("strong");
+      name.textContent = player.name || "Spieler";
+      chips.textContent = String(Number(player.chips) || 0) + " Chips";
+      li.append(name, document.createTextNode(" "), chips);
+      playersList.appendChild(li);
+      if (id === myPlayerId) myChipsDisplay.textContent = String(Number(player.chips) || 0);
+    });
+  }, (error) => alert("Spielerliste: " + error.message));
+
+  stopRoomListener = onValue(roomRef, (snapshot) => {
+    const room = snapshot.val();
+    if (!room) {
+      alert("Dieser Raum ist nicht mehr verfügbar.");
+      leaveLocalRoom();
+      return;
     }
-
-    // Live-Sync für die Spielerliste
-    const playersRef = ref(database, 'rooms/' + currentRoomCode + '/players');
-    onValue(playersRef, (snapshot) => {
-        const players = snapshot.val();
-        if (!players) return;
-
-        playersList.innerHTML = "";
-        for (let id in players) {
-            const player = players[id];
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${player.name}</span> <strong>${player.chips} Chips</strong>`;
-            playersList.appendChild(li);
-
-            if (id === myPlayerId) {
-                myChipsDisplay.innerText = player.chips;
-            }
-        }
-    });
-
-    // Live-Sync für globalen Pot und Turmhöhe
-    const roomRef = ref(database, 'rooms/' + currentRoomCode);
-    onValue(roomRef, (snapshot) => {
-        const roomData = snapshot.val();
-        if (!roomData) return;
-
-        globalPotDisplay.innerText = roomData.pot || 0;
-        const height = roomData.towerHeight || 0;
-        towerHeightDisplay.innerText = height;
-
-        // Checkpoint-Bedingungen prüfen (7, 14, 21)
-        if (height === 7 || height === 14 || height === 21) {
-            checkpointAlert.classList.remove('hidden');
-        } else {
-            checkpointAlert.classList.add('hidden');
-        }
-    });
-
-    const myPlayerRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId);
-    onDisconnect(myPlayerRef).remove();
+    globalPotDisplay.textContent = String(Number(room.pot) || 0);
+    const height = Number(room.towerHeight) || 0;
+    towerHeightDisplay.textContent = String(height);
+    checkpointAlert.classList.toggle("hidden", ![7, 14, 21].includes(height));
+  }, (error) => alert("Live-Synchronisierung: " + error.message));
 }
 
-function changeMyChips(amount) {
-    if (!currentRoomCode || !myPlayerId) return;
-    const playerChipsRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId + '/chips');
-    runTransaction(playerChipsRef, (currentChips) => {
-        return (currentChips || 0) + amount;
-    });
+function leaveLocalRoom() {
+  if (stopPlayersListener) stopPlayersListener();
+  if (stopRoomListener) stopRoomListener();
+  stopPlayersListener = stopRoomListener = null;
+  currentRoomCode = null;
+  myPlayerId = null;
+  isHost = false;
+  gameSection.classList.add("hidden");
+  setupSection.classList.remove("hidden");
 }
 
-// --- LOGIK: EIN CHIP-ZUG WIRD AUSGEFÜHRT ---
-function playTurn(amount) {
-    if (!currentRoomCode || !myPlayerId) return;
-
-    const playerChipsRef = ref(database, 'rooms/' + currentRoomCode + '/players/' + myPlayerId + '/chips');
-    const roomRef = ref(database, 'rooms/' + currentRoomCode);
-
-    // 1. Prüfen und verringern der eigenen Chips
-    runTransaction(playerChipsRef, (currentChips) => {
-        if (currentChips === undefined || currentChips < amount) {
-            alert("Nicht genug Chips für diesen Einsatz!");
-            return; // Abbrechen
-        }
-        return currentChips - amount;
-    }).then((result) => {
-        if (!result.committed) return;
-
-        // 2. Erhöhe Pot und Turmhöhe im geteilten Raumobjekt
-        runTransaction(roomRef, (roomData) => {
-            if (roomData) {
-                roomData.pot = (roomData.pot || 0) + amount;
-                roomData.towerHeight = (roomData.towerHeight || 0) + amount;
-            }
-            return roomData;
-        });
-    });
+async function changeMyChips(amount) {
+  if (!currentRoomCode || !myPlayerId) throw new Error("Du bist keinem Raum beigetreten.");
+  const chipsRef = ref(database, "rooms/" + currentRoomCode + "/players/" + myPlayerId + "/chips");
+  const result = await runTransaction(chipsRef, (value) => {
+    const next = (Number(value) || 0) + amount;
+    if (next < 0 || next > 999999) return;
+    return next;
+  }, { applyLocally: false });
+  if (!result.committed) throw new Error("Chip-Änderung nicht möglich.");
 }
 
-// --- HOST AKTION: RESET BEI TURMSTURZ ---
-function resetTowerAndPot() {
-    if (!isHost || !currentRoomCode) return;
-    const roomRef = ref(database, 'rooms/' + currentRoomCode);
-    
-    runTransaction(roomRef, (roomData) => {
-        if (roomData) {
-            roomData.pot = 0;
-            roomData.towerHeight = 0;
-        }
-        return roomData;
-    });
+async function playTurn(amount) {
+  if (!currentRoomCode || !myPlayerId) throw new Error("Du bist keinem Raum beigetreten.");
+  const playerRef = ref(database, "rooms/" + currentRoomCode + "/players/" + myPlayerId);
+  const playerResult = await runTransaction(playerRef, (player) => {
+    if (!player || Number(player.chips) < amount) return;
+    player.chips = Number(player.chips) - amount;
+    return player;
+  }, { applyLocally: false });
+  if (!playerResult.committed) throw new Error("Nicht genug Chips.");
+
+  const heightRef = ref(database, "rooms/" + currentRoomCode + "/towerHeight");
+  const heightResult = await runTransaction(heightRef, (height) => {
+    const next = (Number(height) || 0) + amount;
+    if (next > 21) return;
+    return next;
+  }, { applyLocally: false });
+
+  if (!heightResult.committed) {
+    await runTransaction(ref(database, "rooms/" + currentRoomCode + "/players/" + myPlayerId + "/chips"), (chips) => (Number(chips) || 0) + amount, { applyLocally: false });
+    throw new Error("Der Turm kann nicht höher als 21 werden. Die Chips wurden zurückerstattet.");
+  }
+
+  const potRef = ref(database, "rooms/" + currentRoomCode + "/pot");
+  await runTransaction(potRef, (pot) => (Number(pot) || 0) + amount, { applyLocally: false });
+}
+
+async function resetTowerAndPot() {
+  if (!isHost || !currentRoomCode) throw new Error("Nur der Host kann zurücksetzen.");
+  const roomRef = ref(database, "rooms/" + currentRoomCode);
+  const snap = await get(roomRef);
+  if (!snap.exists() || snap.val().host !== myPlayerId) throw new Error("Host-Berechtigung konnte nicht bestätigt werden.");
+  await update(roomRef, { pot: 0, towerHeight: 0 });
 }
