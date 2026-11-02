@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { getDatabase, ref, get, set, onValue, runTransaction, onDisconnect, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+import { getDatabase, ref, get, set, remove, onValue, runTransaction, onDisconnect, update } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBjz0AHR4g6bhq_TITyjvDUjfG8xTeYXWY",
@@ -22,6 +22,8 @@ let currentUsername = "";
 let isHost = false;
 let stopPlayersListener = null;
 let stopRoomListener = null;
+let stopConnectionListener = null;
+let leavingRoom = false;
 
 const $ = (id) => document.getElementById(id);
 const setupSection = $("setup-section");
@@ -36,6 +38,16 @@ const globalPotDisplay = $("global-pot");
 const towerHeightDisplay = $("tower-height");
 const checkpointAlert = $("checkpoint-alert");
 const hostControls = $("host-controls");
+const connectionStatus = $("connection-status");
+const roomActionButtons = [
+  $("btn-score-1"),
+  $("btn-score-7"),
+  $("btn-score-2"),
+  $("btn-place-1"),
+  $("btn-place-2"),
+  $("btn-place-3"),
+  $("btn-reset-tower")
+];
 
 $("btn-create-lobby").addEventListener("click", () => guarded(createLobby));
 $("btn-join-lobby").addEventListener("click", () => guarded(joinLobby));
@@ -46,6 +58,7 @@ $("btn-place-1").addEventListener("click", () => guarded(() => playTurn(1)));
 $("btn-place-2").addEventListener("click", () => guarded(() => playTurn(2)));
 $("btn-place-3").addEventListener("click", () => guarded(() => playTurn(3)));
 $("btn-reset-tower").addEventListener("click", () => guarded(resetTowerAndPot));
+$("btn-leave-room").addEventListener("click", () => guarded(leaveRoom));
 
 function guarded(action) {
   Promise.resolve().then(action).catch((error) => {
@@ -120,6 +133,7 @@ async function joinLobby() {
 }
 
 async function enterRoom() {
+  leavingRoom = false;
   setupSection.classList.add("hidden");
   gameSection.classList.remove("hidden");
   displayRoomCode.textContent = currentRoomCode;
@@ -128,11 +142,29 @@ async function enterRoom() {
 
   if (stopPlayersListener) stopPlayersListener();
   if (stopRoomListener) stopRoomListener();
+  if (stopConnectionListener) stopConnectionListener();
 
   const roomRef = ref(database, "rooms/" + currentRoomCode);
   const playersRef = ref(database, "rooms/" + currentRoomCode + "/players");
   const myPlayerRef = ref(database, "rooms/" + currentRoomCode + "/players/" + myPlayerId);
   await onDisconnect(myPlayerRef).remove();
+
+  connectionStatus.dataset.state = "connecting";
+  connectionStatus.querySelector("strong").textContent = "Verbinde mit Firebase …";
+  roomActionButtons.forEach((button) => { button.disabled = true; });
+  stopConnectionListener = onValue(ref(database, ".info/connected"), (snapshot) => {
+    const connected = snapshot.val() === true;
+    connectionStatus.dataset.state = connected ? "connected" : "disconnected";
+    connectionStatus.querySelector("strong").textContent = connected
+      ? "Mit Firebase verbunden"
+      : "Verbindung unterbrochen – erneuter Versuch läuft";
+    roomActionButtons.forEach((button) => { button.disabled = !connected; });
+  }, (error) => {
+    connectionStatus.dataset.state = "disconnected";
+    connectionStatus.querySelector("strong").textContent = "Verbindungsstatus nicht verfügbar";
+    roomActionButtons.forEach((button) => { button.disabled = true; });
+    console.error("Firebase-Verbindungsstatus:", error);
+  });
 
   stopPlayersListener = onValue(playersRef, (snapshot) => {
     const players = snapshot.val() || {};
@@ -152,10 +184,13 @@ async function enterRoom() {
   stopRoomListener = onValue(roomRef, (snapshot) => {
     const room = snapshot.val();
     if (!room) {
-      alert("Dieser Raum ist nicht mehr verfügbar.");
+      if (!leavingRoom) alert("Dieser Raum ist nicht mehr verfügbar.");
       leaveLocalRoom();
       return;
     }
+    isHost = room.host === myPlayerId;
+    hostBadge.classList.toggle("hidden", !isHost);
+    hostControls.classList.toggle("hidden", !isHost);
     globalPotDisplay.textContent = String(Number(room.pot) || 0);
     const height = Number(room.towerHeight) || 0;
     towerHeightDisplay.textContent = String(height);
@@ -166,12 +201,69 @@ async function enterRoom() {
 function leaveLocalRoom() {
   if (stopPlayersListener) stopPlayersListener();
   if (stopRoomListener) stopRoomListener();
-  stopPlayersListener = stopRoomListener = null;
+  if (stopConnectionListener) stopConnectionListener();
+  stopPlayersListener = stopRoomListener = stopConnectionListener = null;
   currentRoomCode = null;
   myPlayerId = null;
   isHost = false;
+  $("btn-leave-room").disabled = false;
   gameSection.classList.add("hidden");
   setupSection.classList.remove("hidden");
+}
+
+async function leaveRoom() {
+  if (!currentRoomCode || !myPlayerId) throw new Error("Du bist keinem Raum beigetreten.");
+  const confirmation = isHost && playersList.children.length <= 1
+    ? "Du bist allein im Raum. Beim Verlassen wird der Raum gelöscht. Fortfahren?"
+    : isHost
+      ? "Möchtest du den Raum verlassen? Die Host-Rolle wird an den am längsten anwesenden Mitspieler übergeben."
+      : "Möchtest du diesen Spielraum wirklich verlassen?";
+  if (!confirm(confirmation)) return;
+
+  const roomCode = currentRoomCode;
+  const playerId = myPlayerId;
+  const roomRef = ref(database, "rooms/" + roomCode);
+  const playerRef = ref(database, "rooms/" + roomCode + "/players/" + playerId);
+  const disconnectRef = onDisconnect(playerRef);
+  const leaveButton = $("btn-leave-room");
+  leaveButton.disabled = true;
+  leavingRoom = true;
+
+  try {
+    await disconnectRef.cancel();
+
+    if (isHost) {
+      const result = await runTransaction(roomRef, (room) => {
+        if (!room || room.host !== playerId || !room.players?.[playerId]) return;
+
+        const remainingPlayers = Object.entries(room.players)
+          .filter(([id]) => id !== playerId)
+          .sort(([, first], [, second]) =>
+            (Number(first.joinedAt) || 0) - (Number(second.joinedAt) || 0)
+          );
+        delete room.players[playerId];
+
+        if (remainingPlayers.length === 0) return null;
+        room.host = remainingPlayers[0][0];
+        return room;
+      }, { applyLocally: false });
+
+      if (!result.committed) throw new Error("Host-Wechsel fehlgeschlagen. Du bleibst im Raum.");
+    } else {
+      await remove(playerRef);
+    }
+
+    leaveLocalRoom();
+  } catch (error) {
+    leavingRoom = false;
+    leaveButton.disabled = false;
+    try {
+      await disconnectRef.remove();
+    } catch (disconnectError) {
+      console.error("Firebase-Abmeldung konnte nicht wiederhergestellt werden:", disconnectError);
+    }
+    throw error;
+  }
 }
 
 async function changeMyChips(amount) {
@@ -213,6 +305,7 @@ async function playTurn(amount) {
 
 async function resetTowerAndPot() {
   if (!isHost || !currentRoomCode) throw new Error("Nur der Host kann zurücksetzen.");
+  if (!confirm("Turm und Pot wirklich zurücksetzen? Der Pot wird dabei auf 0 gesetzt.")) return;
   const roomRef = ref(database, "rooms/" + currentRoomCode);
   const snap = await get(roomRef);
   if (!snap.exists() || snap.val().host !== myPlayerId) throw new Error("Host-Berechtigung konnte nicht bestätigt werden.");

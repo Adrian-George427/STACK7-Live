@@ -102,6 +102,10 @@ Die App soll im mobilen Browser funktionieren und möglichst keine Installation 
 - Die App wurde noch nicht erfolgreich veröffentlicht\.
 - Die Synchronisierung auf mehreren Geräten wurde noch nicht erfolgreich getestet\.
 - Ein früher HTML\-Prototyp wurde im Chat bereitgestellt; er ist als Entwicklungsgerüst zu betrachten\.
+- Die aktuelle Oberfläche enthält eine Rundenhilfe, Raumcode\-Teilen, ein lokales Aktionsprotokoll, Rundenstatistiken sowie optionales Sound\- und visuelles Feedback\.
+- Im Spielraum wird der Firebase\-Verbindungsstatus angezeigt; Spielaktionen sind während einer getrennten Verbindung deaktiviert\.
+- Spieler können den Raum verlassen; beim Verlassen des Hosts wird die Rolle an den am längsten anwesenden Mitspieler übergeben\.
+- Protokoll und persönliche Zug\-Statistik werden nur im lokalen Browser gespeichert und sind nicht mit anderen Spielern synchronisiert\.
 
 Für einen echten Multiplayer\-Betrieb müssen insbesondere Berechtigungen, Datenvalidierung, Spielzustandsübergänge und Schutz vor manipulierten Spielaktionen umgesetzt und getestet werden\.
 

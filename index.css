@@ -217,7 +217,8 @@ button {
     border: 1px solid transparent;
     border-radius: 12px;
     color: var(--text);
-    font-weight: 700
+    font-weight: 700;
+    min-height: 44px
 }
 
 button:disabled {
@@ -311,12 +312,276 @@ button:disabled {
     display: none !important
 }
 
+.quick-guide {
+    overflow: hidden;
+    border: 1px solid #66e5db2b;
+    border-radius: 14px;
+    background: linear-gradient(110deg, #16262a, #171d28)
+}
+
+.quick-guide summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 12px 15px;
+    color: #b7f4ed;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none
+}
+
+.quick-guide summary::-webkit-details-marker {
+    display: none
+}
+
+.quick-guide summary span {
+    color: var(--cyan);
+    font-size: 19px;
+    transition: transform .12s
+}
+
+.quick-guide[open] summary span {
+    transform: rotate(45deg)
+}
+
+.quick-guide summary:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: -3px;
+    border-radius: 12px
+}
+
+.guide-content {
+    padding: 0 15px 13px;
+    color: #aab5c5;
+    font-size: 12px;
+    line-height: 1.6
+}
+
+.guide-content p {
+    margin: 8px 0 0
+}
+
+.guide-content strong {
+    color: var(--text)
+}
+
+.round-tools {
+    display: grid;
+    gap: 14px
+}
+
+.round-tools .section-heading {
+    margin: 0
+}
+
+.sound-toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+    cursor: pointer
+}
+
+.sound-toggle input {
+    width: 16px;
+    min-height: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--cyan)
+}
+
+.round-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px
+}
+
+.round-stats>div {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding: 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #ffffff06
+}
+
+.round-stats strong {
+    color: var(--cyan);
+    font-size: 22px;
+    line-height: 1
+}
+
+.round-stats span,
+.local-note {
+    color: var(--muted);
+    font: 500 9px 'DM Mono', monospace;
+    letter-spacing: .4px
+}
+
+.local-note {
+    margin: -6px 0 0;
+    line-height: 1.5;
+    letter-spacing: 0
+}
+
+.activity-details {
+    border-top: 1px solid var(--line)
+}
+
+.activity-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 44px;
+    color: #c4ccda;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none
+}
+
+.activity-details summary::-webkit-details-marker {
+    display: none
+}
+
+.activity-details summary span {
+    min-width: 24px;
+    padding: 3px 7px;
+    border-radius: 99px;
+    background: #ffffff0d;
+    color: var(--cyan);
+    font: 500 10px 'DM Mono', monospace;
+    text-align: center
+}
+
+.activity-list {
+    display: grid;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 2px
+}
+
+.activity-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    background: #ffffff06;
+    color: #c4ccda;
+    font-size: 11px
+}
+
+.activity-list time {
+    flex: 0 0 auto;
+    color: #7e899b;
+    font: 400 10px 'DM Mono', monospace
+}
+
+.activity-list .activity-empty {
+    color: var(--muted);
+    font-style: italic
+}
+
+.is-updating {
+    animation: stat-pulse .45s ease-out
+}
+
+@keyframes stat-pulse {
+    50% {
+        filter: brightness(1.7)
+    }
+}
+
 .room-strip {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     padding: 4px 3px
+}
+
+.room-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px
+}
+
+.btn-share-room {
+    padding: 8px 11px;
+    border-color: #66e5db44;
+    background: #66e5db12;
+    color: #a9f3ec;
+    font-size: 11px
+}
+
+.btn-leave-room {
+    padding: 8px 11px;
+    border-color: #ff78853b;
+    background: #ff788510;
+    color: #ffabb2;
+    font-size: 11px
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -8px 3px 0;
+    color: var(--muted);
+    font-size: 11px
+}
+
+.connection-status>span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--gold)
+}
+
+.connection-status[data-state="connected"] {
+    color: var(--green)
+}
+
+.connection-status[data-state="connected"]>span {
+    background: var(--green);
+    box-shadow: 0 0 9px #8de2b288
+}
+
+.connection-status[data-state="disconnected"] {
+    color: var(--red)
+}
+
+.connection-status[data-state="disconnected"]>span {
+    background: var(--red)
+}
+
+.feature-status {
+    min-height: 0;
+    margin: -10px 3px 0;
+    color: var(--green);
+    font-size: 11px;
+    line-height: 1.4
+}
+
+.feature-status:empty {
+    display: none
+}
+
+.feature-status[data-kind="error"] {
+    color: var(--red)
 }
 
 .room-code-line {
@@ -646,13 +911,28 @@ button:disabled {
     #game-section>.room-strip,
     #game-section>.status-grid,
     #game-section>.checkpoint-banner,
-    #game-section>.host-controls {
+    #game-section>.host-controls,
+    #game-section>.quick-guide,
+    #game-section>.round-tools,
+    #game-section>.feature-status,
+    #game-section>.connection-status {
         grid-column: 1/-1
     }
 
     #game-section>.chips-panel,
     #game-section>.players-panel {
         align-self: start
+    }
+}
+
+@media(hover:hover) {
+    button:not(:disabled):hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px)
+    }
+
+    .quick-guide summary:hover {
+        background: #ffffff08
     }
 }
 
@@ -720,6 +1000,11 @@ button:disabled {
     .field-caption {
         font-size: 9px;
         letter-spacing: .6px
+    }
+
+    .round-stats span {
+        font-size: 8px;
+        overflow-wrap: anywhere
     }
 }
 

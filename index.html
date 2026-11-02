@@ -47,33 +47,74 @@
                     <div>
                         <p class="eyebrow">DEIN SPIELRAUM</p>
                         <div class="room-code-line">CODE <strong id="display-room-code">------</strong></div>
-                    </div><span id="host-badge" class="badge hidden">♛ HOST</span>
+                    </div>
+                    <div class="room-actions">
+                        <button id="btn-share-room" class="btn-share-room" type="button">Raum teilen ↗</button>
+                        <button id="btn-leave-room" class="btn-leave-room" type="button">Verlassen</button>
+                        <span id="host-badge" class="badge hidden">♛ HOST</span>
+                    </div>
+                </div>
+                <p id="feature-status" class="feature-status" role="status" aria-live="polite"></p>
+                <div id="connection-status" class="connection-status" data-state="connecting" role="status" aria-live="polite">
+                    <span></span><strong>Verbinde mit Firebase …</strong>
                 </div>
                 <div class="status-grid">
                     <article class="status-card pot-card">
                         <div class="status-label"><span class="status-icon">◉</span> GEMEINSAMER POT</div>
-                        <div class="metric" id="global-pot">0</div>
+                        <div class="metric" id="global-pot" aria-live="polite" aria-atomic="true">0</div>
                         <div class="metric-caption">CHIPS IM TOPF</div>
                     </article>
                     <article class="status-card tower-card">
                         <div class="status-label"><span class="status-icon">▥</span> TURMHÖHE</div>
-                        <div class="metric"><span id="tower-height">0</span><span class="metric-max"> / 21</span></div>
+                        <div class="metric" aria-live="polite" aria-atomic="true"><span id="tower-height">0</span><span class="metric-max"> / 21</span></div>
                         <div class="tower-track"><span></span></div>
                         <div class="metric-caption">CHECKPOINTS BEI 7 · 14 · 21</div>
                     </article>
                 </div>
-                <div id="checkpoint-alert" class="checkpoint-banner hidden"><span
+                <div id="checkpoint-alert" class="checkpoint-banner hidden" role="status"><span
                         class="checkpoint-symbol">!</span><span><strong>CHECKPOINT ERREICHT</strong><small>CASH OUT oder
                             STAY?</small></span></div>
                 <div id="host-controls" class="host-controls hidden"><button id="btn-reset-tower"
                         class="btn-danger-small">↻ Turm eingestürzt / Reset</button></div>
+                <details class="quick-guide">
+                    <summary>Rundenhilfe <span>+</span></summary>
+                    <div class="guide-content">
+                        <p>Jeder Spieler startet mit <strong>20 Chips</strong>. Passe dein Kapital mit <strong>+1</strong>,
+                            <strong>+7</strong> oder <strong>−2</strong> an.</p>
+                        <p>Setze pro Zug <strong>1–3 Chips</strong> in den Pot. Jeder gesetzte Chip erhöht zugleich
+                            die Turmhöhe.</p>
+                        <p>Bei <strong>7, 14 und 21</strong> erscheint ein Checkpoint-Hinweis. CASH OUT oder STAY muss
+                            aktuell noch gemeinsam außerhalb der App entschieden werden.</p>
+                    </div>
+                </details>
+                <section class="panel round-tools">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">DEIN ÜBERBLICK</p>
+                            <h2>Rundenstatistik</h2>
+                        </div>
+                        <label class="sound-toggle"><input id="sound-toggle" type="checkbox"><span>Sound</span></label>
+                    </div>
+                    <div class="round-stats">
+                        <div><strong id="stat-players">0</strong><span>SPIELER</span></div>
+                        <div><strong id="stat-own-turns">0</strong><span>DEINE ZÜGE*</span></div>
+                        <div><strong id="stat-own-chips">0</strong><span>VON DIR GESETZT*</span></div>
+                    </div>
+                    <p class="local-note">* Lokal auf diesem Gerät erfasst. Der Verlauf wird nicht mit anderen Spielern synchronisiert.</p>
+                    <details class="activity-details">
+                        <summary>Aktionsprotokoll <span id="activity-count">0</span></summary>
+                        <ul id="activity-list" class="activity-list" aria-live="polite">
+                            <li class="activity-empty">Noch keine Änderungen erfasst.</li>
+                        </ul>
+                    </details>
+                </section>
                 <section class="panel chips-panel">
                     <div class="section-heading">
                         <div>
                             <p class="eyebrow">DEIN STACK</p>
                             <h2>Deine Chips <span class="your-chip-icon">●</span></h2>
                         </div>
-                        <div class="chip-balance"><strong id="my-chips">20</strong><span>CHIPS</span></div>
+                        <div class="chip-balance"><strong id="my-chips" aria-live="polite" aria-atomic="true">20</strong><span>CHIPS</span></div>
                     </div>
                     <p class="field-caption">KAPITAL ANPASSEN</p>
                     <div class="score-buttons capital-buttons"><button id="btn-score-1"><span>＋</span>1
@@ -97,13 +138,14 @@
                             <h2>Mitspieler im Raum</h2>
                         </div><span class="players-icon">♙</span>
                     </div>
-                    <ul id="players-list" class="players-list"></ul>
+                    <ul id="players-list" class="players-list" aria-live="polite"></ul>
                 </section>
             </section>
             <footer class="footer-note"><span class="footer-dot"></span> STACK 7 LIVE <span>·</span> SPIELT ZUSAMMEN,
                 GEWINNT ZUSAMMEN.</footer>
         </main>
     </div>
+    <script type="module" src="ui-features.js"></script>
 </body>
 
 </html>
